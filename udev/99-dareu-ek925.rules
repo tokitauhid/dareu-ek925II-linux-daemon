@@ -2,4 +2,4 @@
 ACTION=="add|change", KERNEL=="hidraw*", ATTRS{idVendor}=="260d", ATTRS{idProduct}=="0015", ATTRS{interface}=="*01*", MODE="0660", OWNER="tokit"
 
 # Tag the daemon's uinput device so the Wayland session gets access
-ACTION=="add", SUBSYSTEM=="input", ATTRS{phys}=="dareu-ek925-media/input0", TAG+="uaccess", TAG+="seat"
+ACTION=="add", SUBSYSTEM=="input", ATTR{phys}=="dareu-ek925-media/input0", TAG+="uaccess", TAG+="seat"
