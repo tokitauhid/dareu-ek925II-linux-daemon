@@ -1,0 +1,12 @@
+[Unit]
+Description=Dareu EK925 II Media Keys Daemon
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/dareu-media-daemon --direct
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

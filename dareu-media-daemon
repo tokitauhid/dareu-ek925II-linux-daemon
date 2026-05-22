@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+import os, sys, time, errno, subprocess, shutil
+from evdev import ecodes as e
+
+HIDRAW = "/dev/input/by-id/usb-YXTech_Com_Game_Keyboard-if01-hidraw"
+REPORT_SIZE = 4
+
+# Auto-detect volume tool (distro-agnostic)
+VOL_TOOL = None
+VOL_UP = None
+VOL_DOWN = None
+VOL_MUTE = None
+
+if shutil.which("wpctl"):
+    SINK = "@DEFAULT_AUDIO_SINK@"
+    VOL_TOOL = "wpctl"
+    VOL_UP   = ["wpctl", "set-volume", SINK, "5%+"]
+    VOL_DOWN = ["wpctl", "set-volume", SINK, "5%-"]
+    VOL_MUTE = ["wpctl", "set-mute", SINK, "toggle"]
+elif shutil.which("pactl"):
+    VOL_TOOL = "pactl"
+    VOL_UP   = ["pactl", "set-sink-volume", "@DEFAULT_SINK@", "+5%"]
+    VOL_DOWN = ["pactl", "set-sink-volume", "@DEFAULT_SINK@", "-5%"]
+    VOL_MUTE = ["pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle"]
+elif shutil.which("amixer"):
+    VOL_TOOL = "amixer"
+    VOL_UP   = ["amixer", "set", "Master", "5%+", "-q"]
+    VOL_DOWN = ["amixer", "set", "Master", "5%-", "-q"]
+    VOL_MUTE = ["amixer", "set", "Master", "toggle", "-q"]
+
+# bit → (name, direct_cmd)
+ACTIONS = {
+     0: ("KEY_NEXTSONG",     ["playerctl", "next"]),
+     1: ("KEY_PREVIOUSSONG", ["playerctl", "previous"]),
+     2: ("KEY_STOPCD",       ["playerctl", "stop"]),
+     3: ("KEY_PLAYPAUSE",    ["playerctl", "play-pause"]),
+     4: ("KEY_MUTE",         VOL_MUTE),
+     5: ("KEY_VOLUMEUP",     VOL_UP),
+     6: ("KEY_VOLUMEDOWN",   VOL_DOWN),
+     8: ("KEY_EMAIL",        None),
+     9: ("KEY_CALC",         None),
+    10: ("KEY_COMPUTER",     None),
+    11: ("KEY_SEARCH",       None),
+    12: ("KEY_HOMEPAGE",     None),
+    13: ("KEY_BACK",         None),
+    14: ("KEY_FORWARD",      None),
+    15: ("KEY_STOP",         None),
+    16: ("KEY_REFRESH",      None),
+    17: ("KEY_BOOKMARKS",    None),
+    18: ("KEY_FULL_SCREEN",  None),
+    19: ("KEY_NORMAL_VIEW",  None),
+    20: ("KEY_VIEW_TOGGLE",  None),
+    21: ("KEY_ZOOMIN",       None),
+    22: ("KEY_ZOOMOUT",      None),
+    23: ("KEY_ZOOMRESET",    None),
+}
+
+def parse_report(data):
+    if len(data) < 4 or data[0] != 2:
+        return None
+    return [data[1], data[2], data[3]]
+
+MODE_DIRECT = "--direct" in sys.argv
+
+if MODE_DIRECT:
+    print(f"direct mode: playerctl + {VOL_TOOL or '(no volume tool found)'}",
+          file=sys.stderr, flush=True)
+else:
+    from evdev import UInput
+    code_map = {}
+    for idx, (name, cmd) in ACTIONS.items():
+        code = getattr(e, name, None)
+        if code is not None:
+            code_map[idx] = code
+    ui = UInput(
+        name="Dareu EK925 II Media Keys",
+        phys="dareu-ek925-media/input0",
+        events={e.EV_KEY: list(code_map.values())},
+        bustype=0x03, vendor=0x260d, product=0x0015, version=0x0111,
+    )
+    print("uinput mode: device created", file=sys.stderr, flush=True)
+
+prev = [0, 0, 0]
+
+def handle_press(global_bit):
+    name, cmd = ACTIONS.get(global_bit, (None, None))
+    if name is None and not MODE_DIRECT:
+        return
+    if MODE_DIRECT:
+        if cmd:
+            try:
+                subprocess.run(cmd, capture_output=True, timeout=2)
+                print(f"  {name}", file=sys.stderr, flush=True)
+            except Exception as ex:
+                print(f"  {name} FAILED: {ex}", file=sys.stderr, flush=True)
+    else:
+        code = code_map.get(global_bit)
+        if code is not None:
+            ui.write(e.EV_KEY, code, 1)
+            ui.syn()
+            time.sleep(0.01)
+            ui.write(e.EV_KEY, code, 0)
+            ui.syn()
+            print(f"  {name}", file=sys.stderr, flush=True)
+
+while True:
+    try:
+        fd = os.open(HIDRAW, os.O_RDONLY)
+    except OSError as ex:
+        msg = {errno.EACCES: "Permission denied.",
+               errno.ENOENT: f"Device {HIDRAW} not found."}.get(ex.errno, f"Error: {ex}")
+        print(msg, file=sys.stderr)
+        time.sleep(3)
+        continue
+
+    try:
+        while True:
+            raw = os.read(fd, REPORT_SIZE)
+            if not raw or len(raw) < 4:
+                continue
+            cur = parse_report(raw)
+            if cur is None:
+                continue
+            for byte_idx in range(3):
+                changed = prev[byte_idx] ^ cur[byte_idx]
+                if not changed:
+                    continue
+                for bit in range(8):
+                    mask = 1 << bit
+                    if changed & mask and cur[byte_idx] & mask:
+                        handle_press(byte_idx * 8 + bit)
+            prev = cur
+    except OSError as ex:
+        print(f"Read error: {ex}", file=sys.stderr)
+    finally:
+        os.close(fd)
+        time.sleep(1)
