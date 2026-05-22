@@ -1,111 +1,112 @@
-# Dareu EK925 II Media Keys for Linux
+# 🎹 Dareu EK925 II — Media Keys Fix for Linux
 
-Fixes the non-functional volume knob and Fn media keys (Fn+1..0) on the **Dareu EK925 II** mechanical keyboard for Linux.
+> Make your keyboards volume knob and media keys (Fn+1 through Fn+0) actually work on Linux.
 
-## The Problem
+---
 
-The keyboard's HID report descriptor marks 23 media/shortcut key fields as **`Const`** (padding) instead of **`Data`**. The Linux kernel's HID parser (`hid-input`) skips Const fields entirely — no input events are generated, regardless of what the hardware sends. The keys work on Windows because its HID driver is more lenient.
+## ❓ What is this?
 
-This is a **firmware bug** in the keyboard's SinoWealth controller (vendor `260d`).
+If you own a **Dareu EK925 II** keyboard and your media keys do nothing on Linux — this fixes that.
 
-## How It Works
+The keyboard has a firmware bug that makes Linux completely ignore its media keys and volume knob. This tool runs quietly in the background and makes them work again, no reboot or kernel patching required.
 
-A userspace daemon (`dareu-media-daemon`) reads raw HID reports from `/dev/hidraw6` and translates them into keystrokes:
+---
 
-```
-┌─────────────┐   raw HID    ┌──────────────────┐   evdev/uinput    ┌───────────┐
-│  Keyboard    │ ──────────→  │  dareu-media-    │ ────────────────→ │  System   │
-│  (hidraw6)   │   (bypasses  │  daemon          │   (or direct      │  (player  │
-│              │    broken    │                  │    cmd)           │   volume) │
-└─────────────┘   descriptor) └──────────────────┘                   └───────────┘
-```
+## ⚡ Quick Test (no install needed)
 
-Two modes:
-
-| Mode | How it works | When to use |
-|------|-------------|-------------|
-| `--direct` (default) | Calls `playerctl`/`wpctl`/`pactl`/`amixer` directly | Reliable, works on any distro |
-| uinput (no flag) | Injects evdev events via `/dev/uinput` | System-wide, keys work in any app |
-
-## File Structure
-
-```
-├── install.sh             # Installation script
-├── src/
-│   └── dareu-media-daemon # The daemon
-├── systemd/
-│   └── dareu-media-daemon.service  # systemd user service
-├── udev/
-│   └── 99-dareu-ek925.rules       # udev rules
-├── scripts/
-│   ├── raw-test.sh        # Verify raw HID data arrives
-│   └── test-temp.sh       # Quick temp test (no install)
-└── README.md
-```
-
-## Quick Test
+Want to try it before installing? Run:
 
 ```bash
 bash scripts/test-temp.sh
 ```
 
-Turn the volume knob or press Fn+2 (Play/Pause). Should control audio immediately.
+Then turn the volume knob or press **Fn+2** (Play/Pause). If audio responds, you're good to go!
 
-## Installation
+---
+
+## 🚀 Installation
 
 ```bash
 bash install.sh
 ```
 
-This installs:
-- `/etc/udev/rules.d/99-dareu-ek925.rules` — grants daemon access to raw HID
-- `~/.local/bin/dareu-media-daemon` — the daemon
-- `~/.config/systemd/user/dareu-media-daemon.service` — auto-start via systemd
+That's it. The script sets everything up automatically and starts the fix on login.
 
-### Post-install
+### What gets installed?
 
-Check status:
+| File | Purpose |
+|------|---------|
+| `/etc/udev/rules.d/99-dareu-ek925.rules` | Lets the tool read your keyboard's raw input |
+| `~/.local/bin/dareu-media-daemon` | The background worker |
+| `~/.config/systemd/user/dareu-media-daemon.service` | Auto-starts it when you log in |
+
+### After installing, check if it's running:
 
 ```bash
 systemctl --user status dareu-media-daemon.service
-journalctl --user -u dareu-media-daemon.service -f
 ```
 
-### Dependencies
+---
 
-Installed automatically on most distros or via your package manager:
+## 📦 Dependencies
 
-| Package | Purpose | Install command |
-|---------|---------|-----------------|
-| `python-evdev` | uinput support | `sudo pacman -S python-evdev` (Arch) / `sudo apt install python3-evdev` (Debian) |
-| `playerctl` | Media playback control | `sudo pacman -S playerctl` / `sudo apt install playerctl` |
-| `wireplumber` | Volume control (auto-detected) | Usually pre-installed with PipeWire |
+Most are already installed or available through your package manager:
 
-If `wireplumber` isn't available, the daemon falls back to `pulseaudio-utils` (pactl) or `alsa-utils` (amixer).
+| Package | What it's for | Install (Arch) | Install (Debian/Ubuntu) |
+|---------|--------------|----------------|--------------------------|
+| `python-evdev` | Reading keyboard input | `sudo pacman -S python-evdev` | `sudo apt install python3-evdev` |
+| `playerctl` | Controlling music playback | `sudo pacman -S playerctl` | `sudo apt install playerctl` |
+| `wireplumber` | Volume control | Usually pre-installed with PipeWire | Usually pre-installed with PipeWire |
 
-## Fn Key Mapping
+> If `wireplumber` isn't found, the tool automatically falls back to PulseAudio or ALSA — no config needed.
 
-The daemon recognizes these key combinations (based on the raw HID report):
+---
 
-| Fn combo | Key | Action |
-|----------|-----|--------|
-| Fn+1 | Next Track | `playerctl next` |
-| Fn+2 | Play/Pause | `playerctl play-pause` |
-| Fn+3 | Previous Track | `playerctl previous` |
-| Fn+4 | Stop | `playerctl stop` |
-| Fn+5 | Mute | `wpctl set-mute ... toggle` |
-| Fn+6 | Volume Up | `wpctl set-volume ... 5%+` |
-| Fn+7 | Volume Down | `wpctl set-volume ... 5%-` |
-| Fn+8 | Calculator | (no default action) |
-| Fn+9 | Email | (no default action) |
-| Fn+0 | Homepage | (no default action) |
+## ⌨️ Key Mapping
 
-Any Fn keys without a mapped action emit evdev keycodes (reserved range 240+) that you can bind in your compositor (Hyprland: `bind = , code:240, exec, ...`).
+| Key Combo | Action |
+|-----------|--------|
+| Fn + 1 | ⏭ Next Track |
+| Fn + 2 | ⏯ Play / Pause |
+| Fn + 3 | ⏮ Previous Track |
+| Fn + 4 | ⏹ Stop |
+| Fn + 5 | 🔇 Mute / Unmute |
+| Fn + 6 | 🔊 Volume Up |
+| Fn + 7 | 🔉 Volume Down |
+| Fn + 8 | 🖩 Calculator *(no default action)* |
+| Fn + 9 | 📧 Email *(no default action)* |
+| Fn + 0 | 🌐 Homepage *(no default action)* |
 
-## Technical Details
+> **Hyprland users:** Keys without a default action still emit unique keycodes you can bind yourself, e.g. `bind = , code:240, exec, your-command`
 
-The HID descriptor issue is in the device's **Interface 1, Report ID 2** (Consumer Control collection). All 24 media/application usage fields use `Input (Const,Var,Abs)` (`0x81 0x03`) instead of `Input (Data,Var,Abs)` (`0x81 0x02`). Relevant kernel code: [`drivers/hid/hid-input.c`](https://github.com/torvalds/linux/blob/master/drivers/hid/hid-input.c) line ~1217 — fields with `HID_MAIN_ITEM_CONSTANT` are skipped.
+---
 
-## License
+## 🛠 Two Modes
 
-MIT
+| Mode | How it works | Best for |
+|------|-------------|----------|
+| **Direct** *(default)* | Calls audio tools directly | Works reliably on any distro |
+| **uinput** | Emulates real keypresses | Works system-wide in any app |
+
+The default mode works for most people. You don't need to change anything.
+
+---
+
+## 🔍 Why does this happen?
+
+The keyboard's firmware mislabels its media keys as "unused padding" in its USB descriptor. Linux follows the spec strictly and ignores them. Windows doesn't care about the spec and reads them anyway.
+
+This tool bypasses the broken descriptor entirely, reading the raw data directly from the keyboard.
+
+<details>
+<summary>Deep technical details</summary>
+
+The bug is in **Interface 1, Report ID 2** (Consumer Control collection). All 24 media/application usage fields incorrectly use `Input (Const,Var,Abs)` (`0x81 0x03`) instead of `Input (Data,Var,Abs)` (`0x81 0x02`). The Linux kernel skips constant fields in [`hid-input.c`](https://github.com/torvalds/linux/blob/master/drivers/hid/hid-input.c) (~line 1217). The keyboard uses a SinoWealth controller (vendor ID `260d`).
+
+</details>
+
+---
+
+## 📄 License
+
+MIT — free to use, modify, and share.
