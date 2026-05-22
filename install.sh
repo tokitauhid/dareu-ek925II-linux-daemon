@@ -15,9 +15,6 @@ sudo cp "$SCRIPT_DIR/udev/99-dareu-ek925.rules" "$UDEV_DEST"
 sudo udevadm control --reload-rules
 sudo udevadm trigger
 
-echo "==> Applying permissions to hidraw..."
-sudo chmod 660 /dev/hidraw6 2>/dev/null || true
-
 echo "==> Installing daemon..."
 mkdir -p "$HOME/.local/bin"
 cp "$SCRIPT_DIR/src/dareu-media-daemon" "$BIN_DEST"
