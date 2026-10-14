@@ -1,10 +1,10 @@
-# 🎹 Dareu EK925 II — Media Keys Fix for Linux
+# Dareu EK925 II — Media Keys Fix for Linux
 
 > Make your keyboards volume knob and media keys (Fn+1 through Fn+0) actually work on Linux.
 
 ---
 
-## ❓ What is this?
+## What is this?
 
 If you own a **Dareu EK925 II** keyboard and your media keys do nothing on Linux — this fixes that.
 
@@ -12,7 +12,7 @@ The keyboard has a firmware bug that makes Linux completely ignore its media key
 
 ---
 
-## ⚡ Quick Test (no install needed)
+## Quick Test (no install needed)
 
 Want to try it before installing? Run:
 
@@ -24,13 +24,25 @@ Then turn the volume knob or press **Fn+2** (Play/Pause). If audio responds, you
 
 ---
 
-## 🚀 Installation
+## Installation
+
+### One-line installer (Recommended)
+
+Works on any Linux distribution and window manager / desktop environment (Hyprland, Sway, i3, GNOME, KDE, etc.):
 
 ```bash
-bash install.sh
+curl -fsSL https://raw.githubusercontent.com/tokitauhid/dareu-ek925II-linux-daemon/main/scripts/install-online.sh | bash
 ```
 
-That's it. The script sets everything up automatically and starts the fix on login.
+### Manual Installation
+
+Clone the repository and run the install script:
+
+```bash
+git clone https://github.com/tokitauhid/dareu-ek925II-linux-daemon.git
+cd dareu-ek925II-linux-daemon
+bash install.sh
+```
 
 ### What gets installed?
 
@@ -40,7 +52,7 @@ That's it. The script sets everything up automatically and starts the fix on log
 | `~/.local/bin/dareu-media-daemon` | The background worker |
 | `~/.config/systemd/user/dareu-media-daemon.service` | Auto-starts it when you log in |
 
-### After installing, check if it's running:
+### Check if it's running:
 
 ```bash
 systemctl --user status dareu-media-daemon.service
@@ -48,40 +60,50 @@ systemctl --user status dareu-media-daemon.service
 
 ---
 
-## 📦 Dependencies
+## Uninstallation
+
+To completely remove the daemon, systemd user service, and udev rule:
+
+```bash
+bash uninstall.sh
+```
+
+---
+
+## Dependencies
 
 Most are already installed or available through your package manager:
 
 | Package | What it's for | Install (Arch) | Install (Debian/Ubuntu) |
 |---------|--------------|----------------|--------------------------|
-| `python-evdev` | Reading keyboard input | `sudo pacman -S python-evdev` | `sudo apt install python3-evdev` |
 | `playerctl` | Controlling music playback | `sudo pacman -S playerctl` | `sudo apt install playerctl` |
 | `wireplumber` | Volume control | Usually pre-installed with PipeWire | Usually pre-installed with PipeWire |
+| `python-evdev` | Only needed for uinput mode | `sudo pacman -S python-evdev` | `sudo apt install python3-evdev` |
 
-> If `wireplumber` isn't found, the tool automatically falls back to PulseAudio or ALSA — no config needed.
+> Direct mode (the default) uses Python's standard library and does not require `python-evdev`. If `wireplumber` isn't found, the tool automatically falls back to PulseAudio (`pactl`) or ALSA (`amixer`).
 
 ---
 
-## ⌨️ Key Mapping
+## Key Mapping
 
 | Key Combo | Action |
 |-----------|--------|
-| Fn + 1 | ⏭ Next Track |
-| Fn + 2 | ⏯ Play / Pause |
-| Fn + 3 | ⏮ Previous Track |
-| Fn + 4 | ⏹ Stop |
-| Fn + 5 | 🔇 Mute / Unmute |
-| Fn + 6 | 🔊 Volume Up |
-| Fn + 7 | 🔉 Volume Down |
-| Fn + 8 | 🖩 Calculator *(no default action)* |
-| Fn + 9 | 📧 Email *(no default action)* |
-| Fn + 0 | 🌐 Homepage *(no default action)* |
+| Fn + 1 | Next Track |
+| Fn + 2 | Play / Pause |
+| Fn + 3 | Previous Track |
+| Fn + 4 | Stop |
+| Fn + 5 | Mute / Unmute |
+| Fn + 6 | Volume Up |
+| Fn + 7 | Volume Down |
+| Fn + 8 | Calculator *(no default action)* |
+| Fn + 9 | Email *(no default action)* |
+| Fn + 0 | Homepage *(no default action)* |
 
 > **Hyprland users:** Keys without a default action still emit unique keycodes you can bind yourself, e.g. `bind = , code:240, exec, your-command`
 
 ---
 
-## 🛠 Two Modes
+## Two Modes
 
 | Mode | How it works | Best for |
 |------|-------------|----------|
@@ -92,7 +114,7 @@ The default mode works for most people. You don't need to change anything.
 
 ---
 
-## 🔍 Why does this happen?
+## Why does this happen?
 
 The keyboard's firmware mislabels its media keys as "unused padding" in its USB descriptor. Linux follows the spec strictly and ignores them. Windows doesn't care about the spec and reads them anyway.
 
@@ -107,6 +129,6 @@ The bug is in **Interface 1, Report ID 2** (Consumer Control collection). All 24
 
 ---
 
-## 📄 License
+## License
 
 MIT — free to use, modify, and share.

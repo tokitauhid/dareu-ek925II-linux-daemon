@@ -2,6 +2,13 @@
 # Install Dareu EK925 II media keys daemon
 set -euo pipefail
 
+if [ "${EUID:-$(id -u)}" -eq 0 ]; then
+    echo "Error: Do not run install.sh with sudo or as root." >&2
+    echo "Run: bash install.sh" >&2
+    echo "The script will prompt for sudo when installing system udev rules." >&2
+    exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 UDEV_DEST="/etc/udev/rules.d/99-dareu-ek925.rules"
 BIN_DEST="$HOME/.local/bin/dareu-media-daemon"

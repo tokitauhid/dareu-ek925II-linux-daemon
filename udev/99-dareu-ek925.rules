@@ -1,4 +1,4 @@
-# Make hidraw6 readable for the daemon (raw HID access)
+# Make the keyboard hidraw interface readable for the daemon (raw HID access)
 # OWNER for non-system users is deprecated in modern systemd/udev
 ACTION=="add|change", KERNEL=="hidraw*", ATTRS{idVendor}=="260d", ATTRS{idProduct}=="0015", ENV{ID_USB_INTERFACE_NUM}=="01", MODE="0644"
 

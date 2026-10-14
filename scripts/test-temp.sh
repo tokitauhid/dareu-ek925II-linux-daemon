@@ -3,13 +3,21 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-HIDRAW6="/dev/hidraw6"
+DEVICE_LINK="/dev/input/by-id/usb-YXTech_Com_Game_Keyboard-if01-hidraw"
 
-sudo chmod 666 "$HIDRAW6"
+if [ ! -e "$DEVICE_LINK" ]; then
+    echo "Error: Keyboard device not found at $DEVICE_LINK" >&2
+    echo "Make sure the Dareu EK925 II keyboard is plugged in." >&2
+    exit 1
+fi
+
+HIDRAW="$(readlink -f "$DEVICE_LINK")"
+
+sudo chmod 666 "$HIDRAW"
 
 cleanup() {
     echo
-    sudo chmod 600 "$HIDRAW6" 2>/dev/null || true
+    sudo chmod 600 "$HIDRAW" 2>/dev/null || true
     exit 0
 }
 trap cleanup SIGINT SIGTERM EXIT

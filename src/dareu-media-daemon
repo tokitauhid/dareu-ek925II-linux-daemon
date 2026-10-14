@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import os, sys, time, errno, subprocess, shutil
-from evdev import ecodes as e
 
 HIDRAW = "/dev/input/by-id/usb-YXTech_Com_Game_Keyboard-if01-hidraw"
 REPORT_SIZE = 4
@@ -66,7 +65,13 @@ if MODE_DIRECT:
     print(f"direct mode: playerctl + {VOL_TOOL or '(no volume tool found)'}",
           file=sys.stderr, flush=True)
 else:
-    from evdev import UInput
+    try:
+        from evdev import UInput, ecodes as e
+    except ImportError:
+        print("Error: python-evdev is required for uinput mode. Install it via your package manager or run with --direct.",
+              file=sys.stderr)
+        sys.exit(1)
+
     code_map = {}
     for idx, (name, cmd) in ACTIONS.items():
         code = getattr(e, name, None)
@@ -89,7 +94,11 @@ def handle_press(global_bit):
     if MODE_DIRECT:
         if cmd:
             try:
-                subprocess.run(cmd, capture_output=True, timeout=2)
+                subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
                 print(f"  {name}", file=sys.stderr, flush=True)
             except Exception as ex:
                 print(f"  {name} FAILED: {ex}", file=sys.stderr, flush=True)
